@@ -1,0 +1,12 @@
+---
+// Thin book-style divider: line – leaf with a star – line (colour = currentColor, default old gold).
+const { cls = '' } = Astro.props;
+---
+<svg class={`ornament ${cls}`} viewBox="0 0 320 22" aria-hidden="true" focusable="false">
+  <path d="M8 11 H128" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.7" />
+  <path d="M192 11 H312" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.7" />
+  <circle cx="132" cy="11" r="1.6" fill="currentColor" /><circle cx="188" cy="11" r="1.6" fill="currentColor" />
+  <path d="M160 3 C166 7 168 9 172 11 C168 13 166 15 160 19 C154 15 152 13 148 11 C152 9 154 7 160 3 Z" fill="none" stroke="currentColor" stroke-width="1.1" />
+  <path d="M160 7.5 L161.2 10 L164 11 L161.2 12 L160 14.5 L158.8 12 L156 11 L158.8 10 Z" fill="currentColor" />
+  <path d="M141 11 C145 7.5 148 7.5 150 9 M179 11 C175 7.5 172 7.5 170 9 M141 11 C145 14.5 148 14.5 150 13 M179 11 C175 14.5 172 14.5 170 13" fill="none" stroke="currentColor" stroke-width="0.9" />
+</svg>

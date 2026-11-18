@@ -1,0 +1,24 @@
+---
+// Person medallion (a framed portrait in the family album): monogram/photo, name, * and † years, a human detail.
+import Monogram from './Monogram.astro';
+import { people, lineByK, href, life, lifeSpan } from '../lib/data.js';
+const { slug, rel = '', showRel = false } = Astro.props;
+const p = slug ? people[slug] : null;
+const l = p ? life(p) : null;
+const line = p?.line ? lineByK[p.line] : null;
+const detail = l ? [l.ageText, l.occ, !l.ageText && l.place ? `from ${l.place}` : ''].filter(Boolean).slice(0, 2).join(' · ') : '';
+---
+{p ? (
+  <a class={`medal ${p.st}`} href={href.person(p.slug)} style={line ? `--c:${line.color}` : undefined}>
+    {line && <span class="tick" aria-hidden="true"></span>}
+    <Monogram p={p} />
+    <span class="who">
+      {(rel || showRel) && <span class="rel">{rel || p.rel}</span>}
+      <span class="nm">{p.name}</span>
+      {lifeSpan(p) && <span class="life">{lifeSpan(p)}</span>}
+      {detail && <span class="detail">{detail}</span>}
+    </span>
+  </a>
+) : (
+  <span class="medal empty"><span class="monogram" aria-hidden="true">?</span><span class="who">{rel && <span class="rel">{rel}</span>}<span class="nm muted">not yet known</span></span></span>
+)}

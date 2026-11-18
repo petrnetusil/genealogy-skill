@@ -1,0 +1,58 @@
+---
+import Base from '../../layouts/Base.astro';
+import PersonLink from '../../components/PersonLink.astro';
+import Record from '../../components/Record.astro';
+import { people, families, lineByK, records, href } from '../../lib/data.js';
+
+export function getStaticPaths() {
+  return Object.keys(families).map((id) => ({ params: { id } }));
+}
+const f = families[Astro.params.id];
+const father = f.father ? people[f.father] : null;
+const mother = f.mother ? people[f.mother] : null;
+const children = f.children.map((s) => people[s]);
+const line = f.line ? lineByK[f.line] : null;
+const title = [father?.name ?? (f.fatherUnknown ? 'father not recorded' : 'unknown father'), mother?.name ?? 'unknown mother'].join(' & ');
+---
+<Base title={`Family: ${title}`}>
+  <p class="crumbs">Family{line && <> · <a href={href.line(line.slug)}>{line.name} line</a></>}</p>
+  <h1>{title}</h1>
+
+  <div class="grid2">
+    {[father, mother].map((p, i) => (
+      <div class="card">
+        <h3>{i === 0 ? 'Father' : 'Mother'}</h3>
+        {p ? (
+          <>
+            <p><PersonLink slug={p.slug} /><br /><span class="small muted">{p.rel}</span></p>
+            {p.facts.length > 0 && <ul class="facts small">{p.facts.map((x) => <li>{x}</li>)}</ul>}
+            {p.family && <p class="small"><a href={href.family(p.family)}>Family of origin →</a></p>}
+          </>
+        ) : <p class="muted">{i === 0 && f.fatherUnknown ? 'Not recorded – the child was born out of wedlock.' : 'Not yet known.'}</p>}
+      </div>
+    ))}
+  </div>
+
+  {f.marriage.length > 0 && (
+    <>
+      <h2>Marriage</h2>
+      <ul class="facts">{f.marriage.map((m) => <li>{m.replace(/^×\s*/, '')}</li>)}</ul>
+    </>
+  )}
+
+  <h2>Children</h2>
+  <ul class="facts">
+    {children.map((c) => <li><PersonLink slug={c.slug} /> – direct ancestor ({c.rel})</li>)}
+  </ul>
+  {f.side.length > 0 && (
+    <div class="grid2">{f.side.map((s) => <div class="card"><h3>{s.name}</h3><p class="small">{s.text}</p></div>)}</div>
+  )}
+  <p class="small muted">We do not search for further siblings systematically – only those we came across are listed here.</p>
+
+  {f.records.length > 0 && (
+    <>
+      <h2>Records</h2>
+      <div class="recs">{f.records.filter((r) => records[r]).map((r) => <Record id={r} />)}</div>
+    </>
+  )}
+</Base>

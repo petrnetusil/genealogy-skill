@@ -1,0 +1,22 @@
+# working files and downloaded pages (they go neither to the website nor into the history)
+work/
+__pycache__/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tar.gz
+# website – dependencies, build and everything `npm run data` generates
+web/node_modules/
+web/dist/
+web/.astro/
+web/.netlify/
+web/src/data/site.json
+web/src/generated/
+web/public/img/
+web/public/full/
+web/public/login.html
+web/nginx.conf
+web/netlify/edge-functions/
+web/cloudflare/worker.js
+web/wrangler.jsonc
+web/.wrangler/

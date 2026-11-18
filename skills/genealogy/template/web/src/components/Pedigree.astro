@@ -1,0 +1,74 @@
+---
+// Pedigree three generations back: person, parents, grandparents, great-grandparents (Kekulé: father 2k, mother 2k + 1).
+// Design "Living family chronicle": medallions, soft Bézier connectors, ⚭ rings with the marriage year
+// and a live blood line – on hover / tap the person's ancestors and descendants light up and other branches dim.
+import Monogram from './Monogram.astro';
+import { byK, href, lifeSpan, marriageYear } from '../lib/data.js';
+const { k } = Astro.props;
+const W = 22.5;                       // medallion width in % of the tree width
+const X = (c) => c * ((100 - W) / 3); // left edge of column c in %
+const cols = [0, 1, 2, 3].map((d) => {
+  const n = 2 ** d, span = 8 / n;
+  return Array.from({ length: n }, (_, i) => ({ k: k * n + i, c: d, y: (i * span + span / 2) * 100 }));   // y in hundredths of a row
+});
+const all = cols.flat();
+const yOf = Object.fromEntries(all.map((b) => [b.k, b]));
+const depth = (kk) => (byK[2 * kk] || byK[2 * kk + 1] ? 1 + Math.max(depth(2 * kk), depth(2 * kk + 1)) : 0);
+const known = (kk) => (byK[kk] ? 1 + known(2 * kk) + known(2 * kk + 1) : 0);
+const genWord = (n) => (n === 1 ? 'generation' : 'generations');
+const threads = all.filter((b) => b.c < 3 && byK[b.k]).flatMap((b) => [2 * b.k, 2 * b.k + 1].filter((pk) => byK[pk]).map((pk) => {
+  const x0 = X(b.c) + W, x1 = X(b.c + 1), y0 = b.y, y1 = yOf[pk].y, mx = (x0 + x1) / 2;
+  return { a: b.k, b: pk, d: `M${x0},${y0} C${mx},${y0} ${mx},${y1} ${x1},${y1}` };
+}));
+const rings = all.filter((b) => b.c < 3 && byK[2 * b.k] && byK[2 * b.k + 1]).map((b) => ({ k: b.k, x: (X(b.c) + W + X(b.c + 1)) / 2, y: b.y, year: marriageYear(b.k) }));
+---
+<div class="ptree" data-root={k} role="list" aria-label="Pedigree three generations back">
+  <svg class="threads" viewBox="0 0 100 800" preserveAspectRatio="none" aria-hidden="true">
+    {threads.map((t) => <path class="thread" data-a={t.a} data-b={t.b} d={t.d} />)}
+  </svg>
+  {rings.map((r) => (
+    <span class="ring" data-k={r.k} style={`left:${r.x}%;top:calc(${r.y / 100} * var(--row))`} title={r.year ? `Parents' marriage ${r.year}` : "Parents' marriage"}><b>⚭</b>{r.year ?? ''}</span>
+  ))}
+  {all.map(({ k: kk, c, y }) => {
+    const p = byK[kk];
+    const style = `left:${X(c)}%;top:calc(${y / 100} * var(--row))`;
+    const more = c === 3 && p ? depth(kk) : 0;
+    return p ? (
+      <a role="listitem" data-k={kk} class={`pbox ${p.st} ${c === 0 ? 'self' : ''}`} style={style} href={href.person(p.slug)}
+        title={more ? `The tree continues: ${known(kk) - 1} more ancestors` : undefined}>
+        <Monogram p={p} />
+        <span><span class="nm">{p.name}</span><span class="y">{lifeSpan(p) || ' '}</span>
+          {more > 0 && <span class="more">and {more} more {genWord(more)} →</span>}</span>
+      </a>
+    ) : (
+      byK[kk >> 1] ? <span role="listitem" class="pbox empty" style={style}>ancestor not yet known</span> : null
+    );
+  })}
+</div>
+<p class="tree-hint">Point at an ancestor – the path of our bloodline lights up.</p>
+
+<script>
+  // Live blood line: ancestors (2k, 2k+1, …) and descendants (k >> 1 … down to the page's person).
+  document.querySelectorAll<HTMLElement>('.ptree').forEach((tree) => {
+    const root = Number(tree.dataset.root);
+    const lit = (k: number) => {
+      const set = new Set<number>();
+      for (let d = k; d >= root; d >>= 1) set.add(d);
+      const up = (a: number) => { if (a < root * 8 * 2) { set.add(a); up(2 * a); up(2 * a + 1); } };
+      up(k);
+      return set;
+    };
+    const show = (k: number | null) => {
+      const set = k ? lit(k) : null;
+      tree.classList.toggle('focus', !!set);
+      tree.querySelectorAll<HTMLElement>('.pbox[data-k], .ring').forEach((el) => el.classList.toggle('lit', !!set?.has(Number(el.dataset.k))));
+      tree.querySelectorAll<SVGPathElement>('.thread').forEach((el) => el.classList.toggle('lit', !!set?.has(Number(el.dataset.a)) && !!set?.has(Number(el.dataset.b))));
+    };
+    tree.querySelectorAll<HTMLElement>('.pbox[data-k]').forEach((el) => {
+      el.addEventListener('mouseenter', () => show(Number(el.dataset.k)));
+      el.addEventListener('focus', () => show(Number(el.dataset.k)));
+    });
+    tree.addEventListener('mouseleave', () => show(null));
+    tree.addEventListener('focusout', (e) => { if (!tree.contains(e.relatedTarget as Node)) show(null); });
+  });
+</script>

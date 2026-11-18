@@ -1,0 +1,40 @@
+---
+import Base from '../layouts/Base.astro';
+import PersonLink from '../components/PersonLink.astro';
+import { docs } from '../lib/data.js';
+// document `type` values from data/documents.json (any other value is listed under "Other")
+const groups = [
+  ['photo', 'Photographs'],
+  ['certificate', 'Certificates and official papers'],
+  ['register_copy', 'Register extracts and baptism certificates'],
+  ['document', 'Memoirs, letters and family notes'],
+  ['map', 'Maps and plans'],
+  ['screenshot', 'Family trees (screenshots)'],
+  ['other', 'Other'],
+];
+const known = new Set(groups.map(([k]) => k));
+const year = (d) => parseInt(String(d.date || '').match(/\d{4}/)?.[0] || '9999');
+const kindOf = (d) => (known.has(d.kind || 'photo') ? d.kind || 'photo' : 'other');
+const byKind = (k) => docs.filter((d) => kindOf(d) === k).sort((a, b) => year(a) - year(b));
+---
+<Base title="Documents & photos" description="Family photographs, certificates and memoirs">
+  <h1>Documents & photos</h1>
+  <p class="lead">Everything the family has shared – photographs, baptism and marriage certificates, memoirs. Click to open an image full size.
+    Each shows whom it concerns; more information is on the person's page.</p>
+  <p class="small">Count: {docs.length}. Do you have more photos or documents at home? Send them – we will gladly add them here.</p>
+  {groups.map(([k, title]) => byKind(k).length > 0 && (
+    <>
+      <h2>{title} <span class="small muted">({byKind(k).length})</span></h2>
+      <div class="docs">
+        {byKind(k).map((d) => (
+          <figure>
+            <a href={`/img/${d.img}.jpg`} target="_blank" rel="noopener"><img src={`/img/${d.img}.jpg`} alt={d.caption} loading="lazy" /></a>
+            <figcaption>{d.date && <strong>{d.date}: </strong>}{d.caption}
+              {d.people.length > 0 && <span class="doc-people">{d.people.map((s, i) => <>{i > 0 && ', '}<PersonLink slug={s} showYears={false} /></>)}</span>}
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </>
+  ))}
+</Base>

@@ -1,0 +1,41 @@
+---
+import Base from '../../layouts/Base.astro';
+import PersonLink from '../../components/PersonLink.astro';
+import { records, recordList } from '../../lib/data.js';
+
+export function getStaticPaths() {
+  return recordList.map((r) => ({ params: { key: r.key } }));
+}
+const r = records[Astro.params.key];
+---
+<Base title={r.title} wide>
+  <p class="crumbs"><a href="/records/">Register records</a> · <span class="kind">{r.kindName}</span></p>
+  <h1>{r.title}</h1>
+  <p class="lead">{r.summary}</p>
+  <div class="table-box"><table>
+    <tbody>
+      <tr><th>Date</th><td>{r.date}</td></tr>
+      <tr><th>Archive</th><td>{r.archive}</td></tr>
+      <tr><th>Volume</th><td>{r.volume}</td></tr>
+      <tr><th>Image</th><td>{r.scan}{r.url && <> – <a href={r.url} target="_blank" rel="noopener">open on {r.portal || 'the archive portal'}</a></>}</td></tr>
+      {r.readBy && <tr><th>Read by</th><td>{r.readBy}</td></tr>}
+      {r.checkedBy?.length > 0 && <tr><th>Checked by</th><td>{r.checkedBy.join('; ')}</td></tr>}
+      {r.people.length > 0 && <tr><th>Concerns</th><td>{r.people.map((s, i) => <>{i > 0 && ', '}<PersonLink slug={s} /></>)}</td></tr>}
+    </tbody>
+  </table></div>
+  {r.img && (
+    <p style="margin-top:1rem">
+      <a href={r.full ? `/full/${r.key}.jpg` : `/img/${r.key}.jpg`} target="_blank" rel="noopener"><span class="hl-wrap" style="border:1px solid var(--line);border-radius:8px"><img src={`/img/${r.key}.jpg`} alt={`Crop of the record: ${r.title}`} />{r.boxes.map(([x0, y0, x1, y1]) => <span class="hl" style={`left:${x0 * 100}%;top:${y0 * 100}%;width:${(x1 - x0) * 100}%;height:${(y1 - y0) * 100}%`}></span>)}</span></a>
+      <br /><span class="small muted">{r.boxes.length ? 'The red frame marks the part we read. ' : ''}{r.full ? 'Click to open the crop in full resolution.' : ''}</span>
+    </p>
+  )}
+  {r.orig && (
+    <div class="transcript">
+      <div class="tr-grid">
+        <div><h2>Transcription of the original</h2><p class="tr-orig">{r.orig}</p></div>
+        <div><h2>Translation</h2><p class="tr-translation">{r.translation}</p></div>
+      </div>
+      <p class="small muted">Uncertain readings are marked (?), illegible parts […]. You can check the transcription against the crop above.</p>
+    </div>
+  )}
+</Base>

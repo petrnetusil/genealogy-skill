@@ -1,0 +1,46 @@
+{
+ "title": "The Novák Family Tree",
+ "description": "Family tree of the Novák family and seven related lines from the Pardubice and Chrudim region, researched in parish registers. (Sample – a fictional family.)",
+ "footer": "Researched in the digitised parish registers of the State Regional Archives",
+ "contact": {
+  "name": "Petr Novák",
+  "email": ""
+ },
+ "gate": {
+  "intro": "This website is only for family and relatives.",
+  "question": "What trade did the Nováks of Holice practise? (sample – answer: blacksmith)",
+  "answer": "blacksmith"
+ },
+ "home": {
+  "heading": "The blacksmiths of Holice and their 260 ancestors",
+  "paragraphs": [
+   "In 1786 the young blacksmith Václav Novák from Ostřetín married into the forge in Holice no. 112. His descendants shod horses there for another 158 years, five generations in a row.",
+   "Besides the Nováks you will find millers from Slatiňany, clothiers from Vysoké Mýto and potters from Luže. There are eleven generations, back to the blacksmith Jakub, born around 1665. Every detail links to the original register record."
+  ],
+  "photo": "",
+  "photo_caption": ""
+ },
+ "story": {
+  "menu": "The Nováks' story",
+  "line": 8
+ },
+ "home_curiosities": [
+  {
+   "title": "158 years in one forge",
+   "text": "Five generations of Nováks in Holice no. 112, from 1786 to 1944."
+  },
+  {
+   "title": "A mill for five generations",
+   "text": "The Kučeras ground grain in Slatiňany no. 5 from at least 1773."
+  },
+  {
+   "title": "An ancestor who lived to 94",
+   "text": "Karolína Kubátová from Luže lived through Austria-Hungary, both world wars and the end of the second one."
+  },
+  {
+   "title": "A wedding at the last minute",
+   "text": "Grandmother Marie Králová was born 114 days after her parents' wedding."
+  }
+ ],
+ "country": "Czechia"
+}

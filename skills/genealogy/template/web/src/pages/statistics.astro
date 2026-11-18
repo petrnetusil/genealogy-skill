@@ -1,0 +1,173 @@
+---
+// Family tree statistics – numbers and simple charts (CSS/SVG, no libraries). Calculations in lib/statistics.js.
+// Design "Living family chronicle".
+import Base from '../layouts/Base.astro';
+import Ornament from '../components/Ornament.astro';
+import { genName, earliestYear, ordinal } from '../lib/data.js';
+import * as S from '../lib/statistics.js';
+
+const pctOf = (n, of) => (of ? Math.max(0.6, (n / of) * 100) : 0);
+const maxOcc = S.occupations[0]?.count ?? 1;
+const maxPlace = S.places[0]?.count ?? 1;
+const maxNameM = S.namesMen[0]?.count ?? 1, maxNameF = S.namesWomen[0]?.count ?? 1;
+const maxHist = Math.max(1, ...S.childHist.map((h) => h.count));
+const stTotal = S.status.reduce((s, x) => s + x.count, 0);
+const centuryName = (c) => ordinal(c);
+const num = (n) => String(n);
+const yrs = (n) => `${num(n)} years`;   // 65.1 years · 74 years
+const maxLine = Math.max(1, ...S.lineStats.map((l) => l.count));
+const genLabel = (g) => genName(g).replace(/^\d+\w* generation \((.*)\)$/, '$1');
+---
+<Base title="Statistics" description="The family tree in numbers – ancestors by generation, age at death, marriages, names, trades and places." wide>
+  <section class="frontis">
+    <p class="kicker">The family tree in numbers</p>
+    <h1>Statistics</h1>
+    <Ornament />
+    <p class="summary">What the family tree tells us when we add up the ancestors: how many we know, how long they lived, when they married,
+      what they were called and how they earned a living. Only what has already been found in registers and family sources is counted.</p>
+  </section>
+
+  <div class="stats">
+    <div><strong>{S.summary.ancestors}</strong>known ancestors</div>
+    <div><strong>{S.summary.ancestors ? Math.round((S.summary.documented / S.summary.ancestors) * 100) : 0} %</strong>documented in registers</div>
+    <div><strong>{S.summary.generations}</strong>generations</div>
+    <div><strong>{S.summary.records}</strong>register records</div>
+    <div><strong>{earliestYear}</strong>earliest year</div>
+    <div><strong>{S.summary.places}</strong>places on the map</div>
+  </div>
+
+  <h2>Ancestors by generation</h2>
+  <p class="small muted">Each generation has twice as many ancestors as the one before (2, 4, 8 …). A full bar = we know them all; the darker part = documented in registers.
+    {S.summary.implex > 0 && <> Ancestors who appear in the tree more than once (relatives married relatives) are counted in each of their places.</>}</p>
+  <div class="sbars gens">
+    {S.generations.map((g) => (
+      <div class="sbar">
+        <span class="lab"><strong>{g.g}.</strong> {genLabel(g.g)}</span>
+        <span class="track" title={`${g.known} of ${g.total}`}>
+          <span class="fill known" style={`width:${pctOf(g.known, g.total)}%`}></span>
+          <span class="fill doc" style={`width:${pctOf(g.doc, g.total)}%`}></span>
+        </span>
+        <span class="val">{g.known} of {g.total.toLocaleString('en-GB')}{g.pct >= 1 ? <span class="muted"> · {num(g.pct)} %</span> : ''}</span>
+      </div>
+    ))}
+  </div>
+
+  <div class="grid2 stat-grid">
+    <div class="card">
+      <h3>How certain we are</h3>
+      <div class="stack" role="img" aria-label={S.status.map((x) => `${x.label} ${x.count}`).join(', ')}>
+        {S.status.map((x) => <span class={`seg-${x.st}`} style={`width:${(x.count / stTotal) * 100}%`} title={`${x.label}: ${x.count}`}></span>)}
+      </div>
+      <ul class="legend">
+        {S.status.map((x) => <li><span class={`dot seg-${x.st}`}></span>{x.label} <strong>{x.count}</strong></li>)}
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Earliest traces</h3>
+      {S.oldestRecord && <p class="small">Earliest record: <a href={S.oldestRecord.href}>{S.oldestRecord.title}</a> <span class="muted">({S.oldestRecord.date}, {S.oldestRecord.kind})</span></p>}
+      {S.oldestPerson && <p class="small">Earliest-born ancestor: <a href={S.oldestPerson.href}>{S.oldestPerson.name}</a> <span class="muted">(* {S.oldestPerson.year})</span></p>}
+      <p class="small">Records by kind: {S.recordKinds.map((k, i) => <>{i > 0 && ' · '}{k.name} <strong>{k.count}</strong></>)}</p>
+    </div>
+  </div>
+
+  <h2>Lines</h2>
+  <div class="sbars">
+    {S.lineStats.map((l) => (
+      <div class="sbar">
+        <span class="lab"><span class="dot" style={`background:${l.color}`}></span> <a href={l.href}>{l.name}</a></span>
+        <span class="track"><span class="fill" style={`width:${pctOf(l.count, maxLine)}%;background:${l.color}`}></span></span>
+        <span class="val">{l.count} ancestors{l.oldest && <span class="muted"> · from {l.oldest}</span>}</span>
+      </div>
+    ))}
+  </div>
+
+  <h2>How long they lived</h2>
+  <p class="small muted">Average age at death of the ancestors whose birth and death we know (or the age given in the death record). These are adults only –
+    children who died young cannot be ancestors, so the numbers come out higher than the "life expectancy" of the time.</p>
+  <div class="duo-legend small"><span><span class="dot m"></span>men</span><span><span class="dot f"></span>women</span></div>
+  <div class="duo">
+    {S.lifeByCentury.map((r) => (
+      <div class="duo-row">
+        <span class="lab">{centuryName(r.century)} century</span>
+        <span class="bars">
+          {r.men != null && <span class="b m" style={`width:${r.men}%`}><span>{yrs(r.men)}</span></span>}
+          {r.women != null && <span class="b f" style={`width:${r.women}%`}><span>{yrs(r.women)}</span></span>}
+        </span>
+        <span class="val muted small">{r.menN} men · {r.womenN} women</span>
+      </div>
+    ))}
+    <div class="duo-row total">
+      <span class="lab"><strong>Overall</strong></span>
+      <span class="bars">
+        <span class="b m" style={`width:${S.lifeAll.men}%`}><span>{yrs(S.lifeAll.men)}</span></span>
+        <span class="b f" style={`width:${S.lifeAll.women}%`}><span>{yrs(S.lifeAll.women)}</span></span>
+      </span>
+      <span class="val muted small">{S.lifeAll.menN} men · {S.lifeAll.womenN} women</span>
+    </div>
+  </div>
+  <p class="small">Lived longest: {S.oldestLived.map((p, i) => <>{i > 0 && ' · '}<a href={p.href}>{p.name}</a> ({p.age})</>)}</p>
+
+  <h2>Age at marriage</h2>
+  <div class="grid2 stat-grid">
+    {S.marriageAge.map((m) => (
+      <div class="card big-num">
+        <p class="kicker">{m.sex === 'M' ? 'Grooms' : 'Brides'}</p>
+        <strong>{num(m.avg)}</strong><span> years on average</span>
+        <p class="small muted">median {m.median} years · from {m.min} to {m.max} · from {m.n} marriages with a known year of birth</p>
+      </div>
+    ))}
+  </div>
+  <div class="duo">
+    {S.marriageByCentury.map((r) => (
+      <div class="duo-row">
+        <span class="lab">{centuryName(r.century)} century</span>
+        <span class="bars">
+          {r.men != null && <span class="b m" style={`width:${r.men * 2}%`}><span>{num(r.men)}</span></span>}
+          {r.women != null && <span class="b f" style={`width:${r.women * 2}%`}><span>{num(r.women)}</span></span>}
+        </span>
+        <span class="val muted small">{r.menN} + {r.womenN} marriages</span>
+      </div>
+    ))}
+  </div>
+  {S.youngest.length > 0 && <p class="small">Youngest at the wedding: {S.youngest.map((p, i) => <>{i > 0 && ' · '}<a href={p.href}>{p.name}</a> ({p.age} years, {p.year})</>)}</p>}
+
+  <h2>Most common first names</h2>
+  <div class="grid2 stat-grid">
+    {[['Men', S.namesMen, maxNameM, 'm'], ['Women', S.namesWomen, maxNameF, 'f']].map(([t, xs, mx, c]) => (
+      <div class="card">
+        <h3>{t}</h3>
+        <ol class="rank">
+          {xs.map((n) => <li><span class="nm">{n.name}</span><span class="track"><span class={`fill ${c}`} style={`width:${pctOf(n.count, mx)}%`}></span></span><span class="val">{n.count}×</span></li>)}
+        </ol>
+      </div>
+    ))}
+  </div>
+
+  <h2>How they earned a living</h2>
+  <p class="small muted">Occupations recorded for {S.occPeople} ancestors (some had more than one – a farmer and also a reeve). Most common:</p>
+  <ol class="rank cols">
+    {S.occupations.map((o) => <li><span class="nm">{o.name}</span><span class="track"><span class="fill" style={`width:${pctOf(o.count, maxOcc)}%`}></span></span><span class="val">{o.count}</span></li>)}
+  </ol>
+
+  <h2>Where they lived</h2>
+  <p class="small muted">Places linked to the most ancestors (birth, marriage, residence, death). All of them are on the <a href="/map/">map</a>.</p>
+  <ol class="rank cols">
+    {S.places.map((o) => <li><span class="nm">{o.name}</span><span class="track"><span class="fill place" style={`width:${pctOf(o.count, maxPlace)}%`}></span></span><span class="val">{o.count}{o.years && <span class="muted small"> · {o.years[0] === o.years[1] ? o.years[0] : `${o.years[0]}–${o.years[1]}`}</span>}</span></li>)}
+  </ol>
+
+  <h2>How many children they had</h2>
+  <p class="small muted">We searched mainly the direct line, so for most families we know only the one child the line continues through.
+    We know more children where we also recorded the ancestors' siblings, or where the family gives the number of children.</p>
+  <div class="kids-hist" role="img" aria-label="Number of families by number of known children">
+    {S.childHist.map((h) => (
+      <div class="col">
+        <span class="n">{h.count}</span>
+        <span class="bar" style={`height:${Math.max(2, (h.count / maxHist) * 100)}%`}></span>
+        <span class="x">{h.n === 9 ? '9+' : h.n}</span>
+      </div>
+    ))}
+  </div>
+  <p class="small muted center">number of known children in the family (vertical bars = how many families)</p>
+  {S.biggestFamilies.length > 0 && <p class="small">Most children: {S.biggestFamilies.map((f, i) => <>{i > 0 && ' · '}<a href={f.href}>{f.names}</a> ({f.n})</>)}</p>}
+  <Ornament />
+</Base>

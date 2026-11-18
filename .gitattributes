@@ -1,0 +1,11 @@
+# LF line endings even when cloned on Windows (core.autocrlf=true) – .sh tools are copied into projects and would
+# not run in Git Bash with CRLF
+*.sh   text eol=lf
+*.py   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.mjs  text eol=lf
+*.astro text eol=lf
+*.jpg  binary
+*.png  binary
+*.pdf  binary

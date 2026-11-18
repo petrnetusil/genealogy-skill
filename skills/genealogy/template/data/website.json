@@ -1,0 +1,22 @@
+{
+ "title": "",
+ "description": "",
+ "footer": "Researched in digitised parish registers and archives",
+ "contact": {"name": "", "email": ""},
+ "gate": {
+  "intro": "This website is only for family and relatives.",
+  "question": "",
+  "answer": "",
+  "open": false
+ },
+ "home": {
+  "heading": "",
+  "paragraphs": [],
+  "photo": "",
+  "photo_caption": ""
+ },
+ "story": {"menu": "", "line": 8, "button": ""},
+ "home_curiosities": [],
+ "country": "",
+ "cloudflare": {"domain": "", "subdomain": "", "worker": ""}
+}

@@ -1,0 +1,73 @@
+---
+import Base from '../layouts/Base.astro';
+import { config, byK, lines, records, href } from '../lib/data.js';
+import news from '../news.json';
+const list = [...news].sort((a, b) => b.version - a.version);
+const lineList = Object.values(lines).sort((a, b) => a.k - b.k);
+
+/** People of a version grouped by family line (lineSlug); without a line = closest family. */
+function byLine(people = []) {
+  const groups = new Map();
+  for (const o of people) {
+    const p = byK[o.k];
+    if (!p) continue;
+    const key = p.lineSlug ?? '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ ...o, p });
+  }
+  const order = ['', ...lineList.map((l) => l.slug)];
+  return [...groups.entries()]
+    .sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))
+    .map(([slug, members]) => ({
+      name: slug ? lines[slug]?.name ?? slug : 'Closest family',
+      slug,
+      members: members.sort((a, b) => (a.p.gen ?? 0) - (b.p.gen ?? 0) || a.k - b.k),
+    }));
+}
+---
+<Base title="What's new">
+  <h1>What's new</h1>
+  <p class="lead">The family tree keeps growing. Here is what each version added.{config.contact?.email && <> Do you have memories, photos or a correction? Write to {config.contact.name || 'the author'} at <a href={`mailto:${config.contact.email}?subject=${encodeURIComponent('Family tree – addition')}`}>{config.contact.email}</a>.</>}</p>
+  {list.map((v) => {
+    const groups = byLine(v.people);
+    const count = groups.reduce((s, g) => s + g.members.length, 0);
+    return (
+      <section class="card">
+        <h2>Version {v.version} <span class="muted small">· {v.date}</span></h2>
+        {v.title && <p><strong>{v.title}</strong></p>}
+        <ul>{(v.points ?? []).map((b) => <li>{b}</li>)}</ul>
+        {count > 0 && (
+          <details class="changes">
+            <summary>Who this version concerns – {count} {count === 1 ? 'person' : 'people'} by line</summary>
+            {groups.map((g) => (
+              <div class="changes-line">
+                <h3>{g.slug ? <a href={href.line(g.slug)}>{g.name}</a> : g.name} <span class="muted small">({g.members.length})</span></h3>
+                <ul>
+                  {g.members.map((o) => (
+                    <li>
+                      <a href={href.person(o.p.slug)}>{o.p.name}</a>
+                      {o.p.years && <span class="muted small"> {o.p.years}</span>}
+                      {o.new && <span class="new"> new in the tree</span>}
+                      {o.records?.length > 0 && (
+                        <span class="small"> – {o.records.filter((z) => records[z]).map((z, i) => <>{i > 0 && ', '}<a href={href.record(z)}>{records[z].title}</a></>)}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </details>
+        )}
+      </section>
+    );
+  })}
+</Base>
+
+<style>
+  .changes { margin-top: 0.75rem; }
+  .changes summary { cursor: pointer; font-weight: 600; }
+  .changes-line h3 { font-size: 1rem; margin: 0.9rem 0 0.3rem; }
+  .changes-line ul { margin-top: 0.2rem; }
+  .changes-line li { margin: 0.15rem 0; }
+  .new { font-size: 0.8em; padding: 0 0.35em; border-radius: 0.3em; background: var(--accent-soft, #f3e3c3); white-space: nowrap; }
+</style>

@@ -1,0 +1,8 @@
+# Netlify deployment: `npm run deploy` (see reference/web.md in the skill).
+[build]
+  publish = "dist"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"

@@ -1,0 +1,10 @@
+---
+import Base from '../layouts/Base.astro';
+import FamilyMap from '../components/FamilyMap.astro';
+---
+<Base title="Family map" wider>
+  <h1>Where our ancestors lived</h1>
+  <p class="lead">Each dot is one place and one line – colour by line, size by number of ancestors. Click a dot for the names; lines can be switched off in the legend.</p>
+  <FamilyMap height="calc(100vh - 230px)" />
+  <p class="small muted">Place positions from OpenStreetMap (centre of today's municipality). A transparent dot with a dashed outline is only a hypothesis.</p>
+</Base>

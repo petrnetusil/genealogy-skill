@@ -1,0 +1,26 @@
+---
+import Base from '../layouts/Base.astro';
+import { issues, config } from '../lib/data.js';
+import { Content as OfflineSources } from '../generated/offline_sources.md';
+// ISSUES answers start with "Resolved:" (hidden here), "Hypothesis:" or "Open:".
+const shown = issues.filter((i) => !/^Resolved\b/i.test(i.text));
+const chip = (t) => (/^Resolved\b/i.test(t) ? 'st-doc' : /^Hypothesis\b/i.test(t) ? 'st-prob' : 'st-unk');
+const label = (t) => (t.includes(':') ? t.split(':')[0] : '');
+const rest = (t) => (t.includes(':') ? t.slice(t.indexOf(':') + 1) : t);
+---
+<Base title="Open questions">
+  <h1>What we are still looking for</h1>
+  <p class="lead">Open questions and hypotheses. If you know about any of this from family memory or documents, please get in touch{config.contact?.email ? <> at <a href={`mailto:${config.contact.email}`}>{config.contact.email}</a></> : ' with the author of the family tree'}.</p>
+  <h2>Open questions</h2>
+  <div class="grid2">
+    {shown.map((i) => (
+      <div class="card">
+        <h3>{i.title}</h3>
+        <p class="small">{label(i.text) && <span class={`chip ${chip(i.text)}`}>{label(i.text)}</span>} {rest(i.text)}</p>
+      </div>
+    ))}
+  </div>
+  <h2 id="offline">Offline only – what cannot be found online</h2>
+  <div class="prose small"><OfflineSources /></div>
+  <p><a href="/log/">Research log – all searches, including the unsuccessful ones →</a></p>
+</Base>

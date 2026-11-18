@@ -1,0 +1,14 @@
+{
+  "name": "genealogy-skill",
+  "description": "Claude Code skill: build your family tree from parish registers and archives and publish a private family website.",
+  "owner": {
+    "name": "Petr Netušil"
+  },
+  "plugins": [
+    {
+      "name": "genealogy",
+      "source": "./",
+      "description": "Family tree from parish registers and archives, ending in a private family website – a step-by-step guide for beginners."
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+---
+// "Read as a chronicle" – ancestors by generation as medallions (design "Living family chronicle").
+import Base from '../layouts/Base.astro';
+import Medal from '../components/Medal.astro';
+import Ornament from '../components/Ornament.astro';
+import PersonLink from '../components/PersonLink.astro';
+import { people, genName, earliestYear, stats, lineByK, statusClass } from '../lib/data.js';
+const list = Object.values(people).sort((a, b) => a.k - b.k);
+const gens = [...new Set(list.map((p) => p.gen))];
+const span = (g) => {
+  const ys = list.filter((p) => p.gen === g).flatMap((p) => (p.years || '').match(/\d{4}/g) ?? []).map(Number);
+  return ys.length ? [Math.min(...ys), Math.max(...ys)] : null;
+};
+const title = (g) => genName(g).replace(/^./, (c) => c.toUpperCase());
+---
+<Base title="Chronicle of ancestors" wide>
+  <section class="frontis">
+    <p class="kicker">All ancestors</p>
+    <h1>Ancestors by generation</h1>
+    <Ornament />
+    <p class="summary">{stats.ancestors} ancestors in {stats.generations} generations, the earliest from {earliestYear}. For each generation you can see how many of the possible ancestors we already know – the others we are still <a href="/open-questions/">looking for</a>.</p>
+    <div class="views">
+      <div class="seg" role="tablist" aria-label="Ancestor view">
+        <button type="button" role="tab" data-view="chronicle" aria-selected="true">Read as a chronicle</button>
+        <button type="button" role="tab" data-view="list" aria-selected="false">Overview list</button>
+      </div>
+      <a class="view-btn" href="/fan/">Ancestor fan</a>
+      <button class="view-btn" type="button" onclick="window.print()">Print</button>
+    </div>
+  </section>
+  <div data-pane="chronicle">
+  {gens.map((g) => {
+    const s = span(g);
+    const n = list.filter((p) => p.gen === g).length;
+    return (
+      <section>
+        <h2>{g === 0 ? 'Root person' : title(g)} <span class="muted small">· {n} of {2 ** g}{s && s[0] !== s[1] ? ` · ${s[0]}–${s[1]}` : ''}</span></h2>
+        <div class="medals">
+          {list.filter((p) => p.gen === g).map((p) => <Medal slug={p.slug} showRel />)}
+        </div>
+      </section>
+    );
+  })}
+  </div>
+
+  <div data-pane="list" hidden>
+    <p class="lead">By generation, in order of the Kekulé number (the father has number 2n, the mother 2n + 1).</p>
+    {gens.map((g) => (
+      <>
+        <h2>{g === 0 ? 'Root person' : title(g)} <span class="muted small">({list.filter((p) => p.gen === g).length} of {2 ** g})</span></h2>
+        <div class="table-box"><table>
+          <thead><tr><th>#</th><th>Name</th><th>Relation</th><th>Line</th><th>Status</th></tr></thead>
+          <tbody>
+            {list.filter((p) => p.gen === g).map((p) => (
+              <tr>
+                <td class="small muted">{p.k}</td>
+                <td><PersonLink slug={p.slug} /></td>
+                <td class="small">{p.rel}</td>
+                <td class="small">{p.line && lineByK[p.line] && <><span class="dot" style={`background:${lineByK[p.line].color};margin-right:.35rem`}></span>{lineByK[p.line].name}</>}</td>
+                <td><span class={`chip ${statusClass(p.st)}`}>{p.status}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table></div>
+      </>
+    ))}
+  </div>
+
+  <script>
+    // Chronicle / list switch; the choice is remembered in the address (#list) and in the browser.
+    const panes = document.querySelectorAll<HTMLElement>('[data-pane]');
+    const tabs = document.querySelectorAll<HTMLButtonElement>('.seg [data-view]');
+    const show = (v: string) => {
+      panes.forEach((p) => (p.hidden = p.dataset.pane !== v));
+      tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.view === v)));
+      history.replaceState(null, '', v === 'list' ? '#list' : location.pathname);
+      try { localStorage.setItem('ancestors-view', v); } catch {}
+    };
+    tabs.forEach((t) => t.addEventListener('click', () => show(t.dataset.view!)));
+    let start = location.hash === '#list' ? 'list' : 'chronicle';
+    try { if (!location.hash && localStorage.getItem('ancestors-view') === 'list') start = 'list'; } catch {}
+    show(start);
+  </script>
+</Base>

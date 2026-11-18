@@ -1,0 +1,8 @@
+---
+// Memorial medallion: an oval photo (if assigned in data/website.json → portraits), otherwise initials in serif italics.
+import { initials, portrait } from '../lib/data.js';
+const { p, lg = false } = Astro.props;
+const img = p ? portrait(p) : null;
+---
+{img ? <img class={`portrait ${lg ? 'lg' : ''}`} src={`/img/${img}.jpg`} alt={`Portrait: ${p.name}`} loading="lazy" />
+  : <span class={`monogram ${lg ? 'lg' : ''}`} aria-hidden="true">{initials(p?.name ?? '?')}</span>}

@@ -1,0 +1,11 @@
+# LF line endings on Windows too (Git for Windows has core.autocrlf=true: .sh scripts would not run in Git Bash
+# and rewritten data files would look completely changed in the history)
+*.sh   text eol=lf
+*.py   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.mjs  text eol=lf
+*.astro text eol=lf
+*.jpg  binary
+*.png  binary
+*.pdf  binary

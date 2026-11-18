@@ -1,0 +1,15 @@
+---
+import Base from '../layouts/Base.astro';
+import { Content } from '../generated/curiosities.md';
+import { lines, linesTitle } from '../lib/data.js';
+---
+<Base title="Curiosities">
+  <h1>Curiosities from the family tree</h1>
+  <p class="lead">What surprised us most while searching – the earliest ancestor, branches that meet, trades and fates.</p>
+  <div class="prose"><Content /></div>
+
+  <div class="next-step">
+    <p><strong>Dive deeper:</strong> browse the family lines, see on the map where the ancestors lived, or find anyone in the fan of all ancestors.</p>
+    <p><a class="btn" href="/lines/">{linesTitle(Object.keys(lines).length)} →</a> <a class="btn" href="/map/">Map →</a> <a class="btn" href="/fan/">Ancestor fan →</a></p>
+  </div>
+</Base>

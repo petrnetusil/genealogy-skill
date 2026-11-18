@@ -1,0 +1,82 @@
+---
+import Base from '../../layouts/Base.astro';
+import PersonLink from '../../components/PersonLink.astro';
+import Record from '../../components/Record.astro';
+import { lines, people, hypotheses, href, genName, statusClass, lineByK, config, pageUrl } from '../../lib/data.js';
+// paragraph of the line's story: escape HTML, then links [text](/path/) → <a>
+const md = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/\[([^\]]+)\]\((\/[^)\s]*)\)/g, '<a href="$2">$1</a>');
+
+export function getStaticPaths() {
+  return Object.keys(lines).map((slug) => ({ params: { slug } }));
+}
+const l = lines[Astro.params.slug];
+const members = l.people.map((s) => ({ ...people[s], gen: l.gens[s] }));
+const gens = [...new Set(members.map((p) => p.gen))].sort((a, b) => a - b);
+const partnerLine = lineByK[l.k ^ 1];
+// the spouse of the great-grandparent where the line starts belongs to the neighbouring line – shown in the first generation table too
+const rootSpouse = people[l.root]?.spouse ? people[people[l.root].spouse] : null;
+---
+<Base title={`${l.name} line`}>
+  <p class="crumbs"><a href="/lines/">Lines</a></p>
+  <h1><span style={`display:inline-block;width:.8em;height:.8em;border-radius:50%;background:${l.color};margin-right:.3em`}></span>{l.name}</h1>
+  <p class="lead">{l.desc}</p>
+  {l.story?.length > 0 && (
+    <section class="card line-story">
+      <h2>A short story of the line</h2>
+      {l.story.map((t) => <p class="prose" set:html={md(t)} />)}
+      {config.hasStory && config.story?.line === l.k && <p><a class="btn" href="/stories/">{config.story?.button || 'Read the whole story'} →</a></p>}
+      {l.unknown && <p class="small muted"><strong>What we do not know yet:</strong> {l.unknown}</p>}
+    </section>
+  )}
+  {config.contact?.email && (
+    <section class="card">
+      <h2>Do you belong to the {l.name} line?</h2>
+      <p class="small">Do you have photos, documents, memories, or do you know something about the line that is missing or wrong here? Write to {config.contact.name || 'the author of the family tree'} –
+        <a href={`mailto:${config.contact.email}?subject=${encodeURIComponent(`Family tree: ${l.name} line`)}&body=${encodeURIComponent(`Line: ${l.name}\nPage: ${pageUrl(href.line(l.slug))}\n\nWhat I would like to add or correct:\n`)}`}>send an e-mail</a>. Every addition will be checked and recorded.</p>
+    </section>
+  )}
+  <p>The line starts with <PersonLink slug={l.root} /> ({people[l.root].rel}).
+    {partnerLine && people[l.root].spouse && (
+      <>{people[l.root].sex === 'M' ? ' His wife ' : ' Her husband '}<PersonLink slug={people[l.root].spouse} /> is the first person
+        of the neighbouring line <a href={href.line(partnerLine.slug)}>{partnerLine.name}</a>; their {people[people[l.root].child].sex === 'M' ? 'son' : 'daughter'} <PersonLink slug={people[l.root].child} />.</>
+    )}
+  </p>
+  <p class="small muted">The family tree is divided into eight lines after the eight great-grandparents – each married couple therefore belongs to two neighbouring lines.</p>
+
+  {gens.map((g) => (
+    <>
+      <h2>{genName(g)}</h2>
+      <div class="table-box"><table>
+        <thead><tr><th>Name</th><th>Life</th><th>Details</th><th>Status</th></tr></thead>
+        <tbody>
+          {members.filter((p) => p.gen === g).map((p) => (
+            <tr>
+              <td><PersonLink slug={p.slug} showYears={false} /></td>
+              <td class="small">{p.years}</td>
+              <td class="small">{p.facts.slice(0, 2).join(' · ')}</td>
+              <td><span class={`chip ${statusClass(p.st)}`}>{p.status}</span></td>
+            </tr>
+          ))}
+          {g === gens[0] && rootSpouse && (
+            <tr class="spouse-row">
+              <td><PersonLink slug={rootSpouse.slug} showYears={false} /><br /><span class="small muted">{rootSpouse.sex === 'F' ? 'wife' : 'husband'}{partnerLine && <> – of the <a href={href.line(partnerLine.slug)}>{partnerLine.name}</a> line</>}</span></td>
+              <td class="small">{rootSpouse.years}</td>
+              <td class="small">{rootSpouse.facts.slice(0, 2).join(' · ')}</td>
+              <td><span class={`chip ${statusClass(rootSpouse.st)}`}>{rootSpouse.status}</span></td>
+            </tr>
+          )}
+        </tbody>
+      </table></div>
+    </>
+  ))}
+
+  {hypotheses.filter((h) => h.line === l.k).map((h) => (
+    <>
+      <h2>{h.title}</h2>
+      {h.text && <p class="prose">{h.text}</p>}
+      {h.items.length > 0 && <ul class="facts">{h.items.map((o) => <li><strong>{o.name}</strong> – {o.text}</li>)}</ul>}
+      <div class="recs">{h.records.map((r) => <Record id={r} />)}</div>
+    </>
+  ))}
+</Base>

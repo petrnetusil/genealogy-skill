@@ -1,0 +1,221 @@
+---
+// "How are we related?" – pick two people, the page computes the relationship from Kekulé numbers (lib/relationship.js).
+// Design "Living family chronicle". Works on variant sites too (data from site.json).
+import Base from '../layouts/Base.astro';
+import Ornament from '../components/Ornament.astro';
+import { people, root } from '../lib/data.js';
+import { buildKinData } from '../lib/relationship.js';
+
+const nodes = buildKinData(people).map((n) => (n.side ? n : { ...n, r: people[n.id].rel }));
+const json = JSON.stringify({ nodes, root: root.slug }).replace(/</g, '\\u003c');
+const nSide = nodes.filter((n) => n.side).length;
+---
+<Base title="How are we related?" description="Pick two people from the family tree and see how they are related and through whom.">
+  <section class="frontis">
+    <p class="kicker">Family relationships</p>
+    <h1>How are we related?</h1>
+    <Ornament />
+    <p class="summary">Pick two people – from the {Object.keys(people).length} people in the tree and {nSide} siblings and other relatives of ancestors – and see
+      how they are related and through which common ancestor their bond runs.</p>
+  </section>
+
+  <div class="kin-pick" id="kin-pick">
+    <div class="kin-field">
+      <label for="kin-a">First person</label>
+      <input id="kin-a" type="search" autocomplete="off" placeholder="Type a name…" aria-autocomplete="list" aria-controls="kin-a-list" />
+      <ul class="kin-sug" id="kin-a-list" role="listbox" hidden></ul>
+    </div>
+    <button type="button" class="tool-btn kin-swap" id="kin-swap" aria-label="Swap people" title="Swap people">⇄ Swap</button>
+    <div class="kin-field">
+      <label for="kin-b">Second person</label>
+      <input id="kin-b" type="search" autocomplete="off" placeholder="Type a name…" aria-autocomplete="list" aria-controls="kin-b-list" />
+      <ul class="kin-sug" id="kin-b-list" role="listbox" hidden></ul>
+    </div>
+  </div>
+
+  <div id="kin-result" class="kin-result" aria-live="polite">
+    <p class="muted kin-empty">Pick both people. The first one is preset to the website's root person – {root.name}.</p>
+  </div>
+
+  <details class="kin-help">
+    <summary>How is the relationship computed?</summary>
+    <p class="small">Every ancestor has a number in the tree: the father of the person with number <em>n</em> has 2<em>n</em>, the mother 2<em>n</em> + 1.
+      The numbers tell who is whose ancestor. When relatives married relatives, the same ancestor appears in the tree more than once – then several
+      paths lead to them and the page shows them all. Siblings of ancestors are taken from the notes only where the relationship is written
+      unambiguously ("sister of Josef"); the others are just "relative" with a note. Second cousins = you share great-grandparents.</p>
+  </details>
+  <Ornament />
+
+  <script type="application/json" id="kin-data" set:html={json}></script>
+  <script>
+    import { indexKin, relate, ancestorTerm, ancestorsPlural, inLawTerms } from '../lib/relationship.js';
+
+    type Node = { id: string; n: string; y?: string; s?: string; k?: number[]; st?: string; r?: string; side?: number; sib?: string | null; of?: string; t?: string };
+    const data = JSON.parse(document.getElementById('kin-data')!.textContent!);
+    const ix = indexKin(data.nodes);
+    const byId: Record<string, Node> = ix.byId;
+    const esc = (t = '') => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+    const norm = (t = '') => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const isVirtual = (id: string) => String(id).startsWith('#');
+    const sexOf = (id: string) => (isVirtual(id) ? (Number(id.slice(1)) % 2 ? 'F' : 'M') : byId[id]?.s);
+    const his = (id: string) => (sexOf(id) === 'F' ? 'her' : sexOf(id) === 'M' ? 'his' : 'their');
+    const slugOf = (id: string) => (byId[id]?.side ? byId[id].of : id);
+    const initials = (name = '') => {
+      const w = name.replace(/\([^)]*\)/g, '').split(/\s+/).filter((x) => /^\p{Lu}/u.test(x));
+      return ((w[0]?.[0] ?? '') + (w.length > 1 ? w[w.length - 1][0] : '')) || '?';
+    };
+    /** Short description of a person for the suggestions and the medallion. */
+    const about = (n: Node) => {
+      if (!n.side) return n.r ?? '';
+      const owner = byId[n.of!];
+      return n.sib ? `${n.s === 'F' ? 'sister' : n.s === 'M' ? 'brother' : 'sibling'} of ${byId[n.sib].n}` : `relative – listed with ${owner.n}`;
+    };
+    const nameLink = (id: string) => isVirtual(id) ? `<strong>unknown ancestor</strong>` :
+      `<a href="/person/${slugOf(id)}/"><strong>${esc(byId[id].n)}</strong></a>`;
+    const medal = (id: string, rel: string, cls = '') => {
+      if (isVirtual(id)) {
+        return `<div class="medal kin-medal empty ${cls}"><span class="monogram" aria-hidden="true">?</span><span class="who"><span class="rel">${esc(rel)}</span><span class="nm muted">${sexOf(id) === 'F' ? 'mother' : 'father'} – not yet known</span></span></div>`;
+      }
+      const n = byId[id];
+      return `<a class="medal kin-medal ${n.st ?? ''} ${cls}" href="/person/${slugOf(id)}/"><span class="monogram" aria-hidden="true">${esc(initials(n.n))}</span>` +
+        `<span class="who"><span class="rel">${esc(rel)}</span><span class="nm">${esc(n.n)}</span>${n.y ? `<span class="life">${esc(n.y)}</span>` : ''}</span></a>`;
+    };
+    const termHtml = (t: { term: string; desc: string }) => `<span class="kin-term">${esc(t.term)}</span>${t.desc && t.desc !== t.term ? ` <span class="kin-desc">(${esc(t.desc)})</span>` : ''}`;
+
+    /** Diagram: the common ancestor (couple) at the top, below it two branches down to both people. */
+    function tree(rel: any, aId: string, bId: string) {
+      const top = rel.cas.map((c: string) => medal(c, rel.dA === 0 && c === aId ? 'first person' : rel.dB === 0 && c === bId ? 'second person' : 'common ancestor', 'kin-top-m')).join('');
+      const col = (path: string[], d: number, who: string) => {
+        // path = [person, parent, …, common ancestor]; listed top-down without the common ancestor
+        const items = path.slice(0, -1).reverse().map((id, i) => {
+          const up = d - 1 - i;   // how many generations above the person this link is
+          const rel = up === 0 ? who : ancestorTerm(up, sexOf(id)) + ` (of the ${who === 'first person' ? 'first' : 'second'} person)`;
+          return `<li>${medal(id, rel, up === 0 ? 'kin-end' : '')}</li>`;
+        });
+        return `<ol class="kin-col">${items.join('')}</ol>`;
+      };
+      return `<div class="kin-tree"><div class="kin-top">${top}</div><div class="kin-cols${rel.dA === 0 || rel.dB === 0 ? ' one' : ''}">` +
+        (rel.dA > 0 ? col(rel.pathA, rel.dA, 'first person') : '') + (rel.dB > 0 ? col(rel.pathB, rel.dB, 'second person') : '') + `</div></div>`;
+    }
+
+    function bloodText(rel: any, aId: string, bId: string, first: boolean) {
+      const via = rel.cas.filter((c: string) => !isVirtual(c));
+      let how = '';
+      if (rel.dA === 0 || rel.dB === 0) how = 'They are in a direct line – one is an ancestor of the other.';
+      else if (via.length) {
+        const words = via.map((c: string) => nameLink(c)).join(' and ');
+        const t = (d: number) => esc(via.length > 1 ? ancestorsPlural(d) : ancestorTerm(d, sexOf(via[0])));
+        how = `${via.length > 1 ? 'Common ancestors' : 'Common ancestor'}: ${words} – for the first person ${via.length > 1 ? 'they are' : 'the'} ${t(rel.dA)}, for the second ${via.length > 1 ? '' : 'the '}${t(rel.dB)}.`;
+      } else how = 'They share parents (not yet known by name in the tree).';
+      return `<p class="kin-answer${first ? '' : ' alt'}">${nameLink(aId)} is the ${termHtml(rel.a)} of ${nameLink(bId)} – ${nameLink(bId)} is ${his(aId)} ${termHtml(rel.b)}.</p>` +
+        `<p class="small muted">${how}${rel.half ? ' They share only one of the parents (half-siblings or their descendants).' : ''}</p>` + tree(rel, aId, bId);
+    }
+
+    function nonBlood(r: any, aId: string, bId: string) {
+      const out: string[] = [];
+      const A = byId[aId], B = byId[bId];
+      if (r.spouse) out.push(`<p class="kin-answer">${nameLink(aId)} and ${nameLink(bId)} are <span class="kin-term">husband and wife</span>.</p>`);
+      if (r.inLaw) {
+        const [p, c] = r.inLaw.parent === 'a' ? [aId, bId] : [bId, aId];
+        const t = inLawTerms(sexOf(p), sexOf(c));
+        out.push(`<p class="kin-answer">${nameLink(p)} is the <span class="kin-term">${t.parent}</span> of ${nameLink(c)} – ${nameLink(c)} is ${his(p)} <span class="kin-term">${t.child}</span>.</p>`);
+      }
+      if (r.descendants?.length) {
+        if (!r.spouse && !r.inLaw) out.push(`<p class="kin-answer">They are not blood relatives – they have no common ancestor in the tree. They are linked by common descendants.</p>`);
+        r.descendants.slice(0, 3).forEach((d: any, i: number) => {
+          const D = byId[d.id];
+          const ta = ancestorTerm(d.dA, A.s), tb = ancestorTerm(d.dB, B.s);
+          out.push(`<p class="${i ? 'small' : ''}">${i ? 'And by another path (the same ancestor appears in the tree more than once): ' : ''}` +
+            `${i ? '' : 'The closest common descendant is '}${nameLink(d.id)}${D.y ? ` <span class="muted">(${esc(D.y)})</span>` : ''}: ` +
+            `${esc(A.n)} is ${his(d.id)} <span class="kin-term">${esc(ta)}</span>, ${esc(B.n)} ${his(d.id)} <span class="kin-term">${esc(tb)}</span>.</p>`);
+        });
+      }
+      return out.join('');
+    }
+
+    function render(aId: string, bId: string) {
+      const box = document.getElementById('kin-result')!;
+      if (!byId[aId] || !byId[bId]) { box.innerHTML = '<p class="muted kin-empty">Pick both people.</p>'; return; }
+      if (aId === bId) { box.innerHTML = `<p class="kin-answer">${nameLink(aId)} – that is the same person.</p>`; return; }
+      const r = relate(ix, aId, bId);
+      let html = `<div class="card kin-card">`;
+      if (r.blood.length) {
+        html += bloodText(r.blood[0], aId, bId, true);
+        if (r.blood.length > 1) {
+          html += `<h3 class="kin-more">They are also related by another path</h3><p class="small muted">Relatives once married relatives – the same ancestor appears in the tree more than once, so several paths lead to them.</p>`;
+          r.blood.slice(1, 5).forEach((x: any) => { html += `<details class="kin-alt"><summary>${esc(byId[aId].n)} is the ${esc(x.a.term)}${x.a.desc ? ` (${esc(x.a.desc)})` : ''}</summary>${bloodText(x, aId, bId, false)}</details>`; });
+        }
+      } else {
+        const nb = nonBlood(r, aId, bId);
+        const unsure = [aId, bId].some((id) => byId[id].side && !byId[id].sib);
+        html += nb || (unsure ? '' : `<p class="kin-answer">The family tree does not link these two people yet – they have no common ancestor or descendant.</p>`);
+      }
+      // side relative without an unambiguous relationship: show the note and the relationship of the person they are listed with
+      for (const id of [aId, bId]) {
+        const n = byId[id];
+        if (n.side && !n.sib) {
+          const other = id === aId ? bId : aId;
+          html += `<p class="note small"><strong>${esc(n.n)}</strong> – relative of ${nameLink(n.of!)}; the tree says: "${esc(n.t ?? '')}${(n.t ?? '').length >= 160 ? '…' : ''}" ` +
+            `The exact relationship cannot be determined reliably from the note. <a href="?a=${encodeURIComponent(n.of!)}&b=${encodeURIComponent(other)}">Show the relationship of ${esc(byId[n.of!].n)} →</a></p>`;
+        }
+      }
+      html += `</div>`;
+      box.innerHTML = html;
+    }
+
+    // ——— picking people with suggestions ———
+    const list = (data.nodes as Node[]).map((n) => ({ n, key: norm(`${n.n} ${n.y ?? ''}`) }));
+    const sel: Record<'a' | 'b', string> = { a: '', b: '' };
+    function setUrl() {
+      const u = new URL(location.href);
+      sel.a ? u.searchParams.set('a', sel.a) : u.searchParams.delete('a');
+      sel.b ? u.searchParams.set('b', sel.b) : u.searchParams.delete('b');
+      history.replaceState(null, '', u);
+    }
+    const label = (id: string) => (byId[id] ? `${byId[id].n}${byId[id].y ? ` (${byId[id].y})` : ''}` : '');
+    (['a', 'b'] as const).forEach((which) => {
+      const input = document.getElementById(`kin-${which}`) as HTMLInputElement;
+      const ul = document.getElementById(`kin-${which}-list`)!;
+      let hits: Node[] = [], cur = -1;
+      const close = () => { ul.hidden = true; cur = -1; input.setAttribute('aria-expanded', 'false'); };
+      const choose = (n: Node) => { sel[which] = n.id; input.value = label(n.id); close(); setUrl(); render(sel.a, sel.b); };
+      const paint = () => {
+        ul.innerHTML = hits.map((n, i) => `<li role="option" data-i="${i}" aria-selected="${i === cur}"><span class="nm">${esc(n.n)}</span> <span class="yrs">${esc(n.y ?? '')}</span><span class="ab">${esc(about(n))}</span></li>`).join('');
+        ul.hidden = !hits.length; input.setAttribute('aria-expanded', String(!!hits.length));
+      };
+      input.addEventListener('input', () => {
+        const q = norm(input.value.trim()).split(/\s+/).filter(Boolean);
+        if (!q.length) { hits = []; paint(); return; }
+        hits = list.filter((x) => q.every((w) => x.key.includes(w)))
+          .sort((x, y) => Number(!x.key.startsWith(q[0])) - Number(!y.key.startsWith(q[0])) || Number(!!x.n.side) - Number(!!y.n.side))
+          .slice(0, 12).map((x) => x.n);
+        cur = -1; paint();
+      });
+      input.addEventListener('keydown', (e) => {
+        if (ul.hidden) return;
+        if (e.key === 'ArrowDown') { cur = Math.min(hits.length - 1, cur + 1); paint(); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { cur = Math.max(0, cur - 1); paint(); e.preventDefault(); }
+        else if (e.key === 'Enter') { const n = hits[cur >= 0 ? cur : 0]; if (n) choose(n); e.preventDefault(); }
+        else if (e.key === 'Escape') close();
+      });
+      input.addEventListener('focus', () => input.select());
+      input.addEventListener('blur', () => setTimeout(close, 150));
+      ul.addEventListener('mousedown', (e) => {
+        const li = (e.target as HTMLElement).closest('li');
+        if (li) { e.preventDefault(); choose(hits[Number(li.dataset.i)]); }
+      });
+    });
+    document.getElementById('kin-swap')!.addEventListener('click', () => {
+      [sel.a, sel.b] = [sel.b, sel.a];
+      (document.getElementById('kin-a') as HTMLInputElement).value = label(sel.a);
+      (document.getElementById('kin-b') as HTMLInputElement).value = label(sel.b);
+      setUrl(); render(sel.a, sel.b);
+    });
+    const params = new URLSearchParams(location.search);
+    sel.a = byId[params.get('a') ?? ''] ? params.get('a')! : data.root;
+    sel.b = byId[params.get('b') ?? ''] ? params.get('b')! : '';
+    (document.getElementById('kin-a') as HTMLInputElement).value = label(sel.a);
+    (document.getElementById('kin-b') as HTMLInputElement).value = label(sel.b);
+    if (sel.a && sel.b) render(sel.a, sel.b);
+  </script>
+</Base>

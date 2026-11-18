@@ -1,0 +1,171 @@
+---
+// A person's page as a chapter of the family chronicle (design "Living family chronicle").
+import Base from '../../layouts/Base.astro';
+import PersonLink from '../../components/PersonLink.astro';
+import Record from '../../components/Record.astro';
+import Pedigree from '../../components/Pedigree.astro';
+import MobileTree from '../../components/MobileTree.astro';
+import Monogram from '../../components/Monogram.astro';
+import Medal from '../../components/Medal.astro';
+import Ornament from '../../components/Ornament.astro';
+import { people, lineByK, records, dateKey, href, statusClass, config, life, fmtDate, initials, root, pageUrl, DATE_PREFIX } from '../../lib/data.js';
+import { eventsFor } from '../../lib/events.js';
+
+export function getStaticPaths() {
+  return Object.keys(people).map((slug) => ({ params: { slug } }));
+}
+const p = people[Astro.params.slug];
+const line = p.line ? lineByK[p.line] : null;
+const recs = [...new Set(p.records)].filter((r) => records[r]).sort((a, b) => dateKey(records[a].date) - dateKey(records[b].date));
+const path = [...p.path].reverse().filter(Boolean);
+const L = life(p);
+const strip = (t) => fmtDate(t.replace(/^[*†×]\s*/, ''));
+const yr = (t) => Number((t.match(/\b(1[0-9]{3}|20[0-9]{2})\b/) || [])[1]) || null;
+const she = p.sex === 'F';
+
+// Life story: birth, marriages, births of children in the line, dated milestones, death.
+const events = [];
+if (L.birth) events.push({ sym: '*', when: L.by ?? yr(L.birth), what: `Born – ${strip(L.birth)}`, order: 0 });
+L.marriages.forEach((m) => events.push({ sym: '⚭', when: yr(m), what: `Married – ${strip(m)}`, order: 1 }));
+(p.children ?? []).forEach((c) => {
+  const ch = people[c];
+  if (!ch) return;
+  const cl = life(ch);
+  events.push({ sym: '✦', when: cl.by, child: ch, what: cl.birth ? strip(cl.birth) : ch.years, order: 2 });
+});
+// More children: siblings of the child in the line, listed with it as "Sister/Brother of …".
+const sibRe = /^(younger |older |elder |eldest |youngest )?(sister|brother)\b/i;
+const sibYearRe = new RegExp(`\\*\\s*(?:${DATE_PREFIX})?(\\d{4})`, 'i');
+const otherKids = (p.children ?? []).flatMap((c) => (people[c]?.side ?? []).filter((s) => sibRe.test(s.text)).map((s) => {
+  const y = Number((s.name.match(/\b(1[5-9]\d{2}|20\d{2})\b/) || s.text.match(sibYearRe) || [])[1]) || null;
+  const nm = s.name.replace(/\s*\([^)]*\)\s*$/, '');
+  return { name: nm, year: y, sex: /sister/i.test(s.text.match(sibRe)[0]) ? 'F' : 'M', text: s.text };
+}));
+otherKids.forEach((o) => events.push({ sym: '✦', when: o.year, what: o.name, sib: o, order: 2 }));
+L.milestones.forEach((m) => events.push({ sym: '·', when: m.year, what: m.text.replace(/\s*\(\d{4}\)\s*$/, ''), order: 1.5 }));
+// Historical events during the life (lib/events.js) – only a few of the most important, set apart from family events.
+eventsFor(p, L.by, L.dy).forEach((h) => events.push({ sym: '◆', when: h.from, whenText: h.when, hist: h, order: 1.2,
+  age: h.age == null ? '' : h.age === 0 ? (L.by && h.from < L.by ? `${she ? 'she' : 'he'} was born during this time` : `in the year of ${she ? 'her' : 'his'} birth`)
+    : `${she ? 'she' : 'he'} was ${h.age}` }));
+if (L.death) events.push({ sym: '†', when: L.dy ?? yr(L.death), what: `Died – ${strip(L.death)}`, order: 9 });
+events.sort((a, b) => (a.order === 0 ? -1 : b.order === 0 ? 1 : a.order === 9 ? 1 : b.order === 9 ? -1 : (a.when ?? 9999) - (b.when ?? 9999)));
+---
+<Base title={p.name} description={`${p.name} ${p.years} – ${p.rel}`}>
+  <div class="crumbs">
+    {path.map((s, i) => <>{i > 0 && <span>→</span>}{s === p.slug ? <span>{people[s].name}</span> : <a href={href.person(s)}>{people[s].name.split(' ')[0]} {people[s].years}</a>}</>)}
+  </div>
+
+  <header class="chapter-head">
+    <Monogram p={p} lg />
+    <div>
+      <p class="rel">{p.rel}</p>
+      <h1>{p.name}</h1>
+      <div class="vitals">
+        {L.birth && <div><span class="sym">*</span>{strip(L.birth)}</div>}
+        {L.marriages.map((m) => <div><span class="sym">⚭</span>{strip(m)}</div>)}
+        {L.death && <div><span class="sym">†</span>{strip(L.death)}</div>}
+        {!L.birth && !L.death && p.years && <div>{p.years}</div>}
+      </div>
+      {(L.ageText || L.occ) && <p class="age">{[L.ageText, L.occ].filter(Boolean).join(' · ')}</p>}
+      <div class="chips">
+        {line && <a class="chip" href={href.line(line.slug)}><span class="dot" style={`background:${line.color}`}></span>{line.name} line</a>}
+        <span class={`chip ${statusClass(p.st)}`}>{p.status}</span>
+        {p.slug !== root.slug && <a class="chip kin-chip" href={`/relationship/?a=${root.slug}&b=${p.slug}`} title={`Relationship to ${root.name} and to other relatives`}>How are we related? →</a>}
+      </div>
+    </div>
+  </header>
+
+  {p.also.length > 0 && (
+    <p class="note">In the tree twice – relatives married relatives: {she ? 'she' : 'he'} is an ancestor through {p.children.map((c, i) => <>{i > 0 && ' and also through '}<PersonLink slug={c} /></>)}.
+      The second time as {p.also.map((a) => a.rel).join(', ')}.</p>
+  )}
+
+  {events.length > 0 && (
+    <>
+      <h2>Life story</h2>
+      <ol class="timeline">
+        {events.map((e) => (
+          <li data-sym={e.sym} class={e.hist ? 'hist' : undefined}>
+            <span class="when">{e.whenText ?? e.when ?? '—'}{e.hist && <span class="hist-tag">in history</span>}</span>
+            <span class="what">{e.hist ? <><strong>{e.hist.title}</strong> – {e.hist.text}{e.age && <span class="hist-age"> ({e.age})</span>}</> : null}{e.hist ? null : e.sib ? <>{e.sib.sex === 'F' ? 'Daughter born:' : 'Son born:'} {e.sib.name}</> : e.child ? <>{e.child.sex === 'F' ? 'Daughter born:' : 'Son born:'} <PersonLink slug={e.child.slug} showYears={false} /> – {e.what}</> : e.what}</span>
+          </li>
+        ))}
+      </ol>
+    </>
+  )}
+  {L.other.length > 0 && (
+    <>
+      <h3>More details</h3>
+      <ul class="facts">{L.other.map((f) => <li>{fmtDate(f)}</li>)}</ul>
+    </>
+  )}
+
+  {p.memories?.length > 0 && (
+    <>
+      <h2>Memories and stories</h2>
+      <div class="story">
+        {p.memories.map((m) => <p>{m.text} {m.source && <span class="src">— {m.kind === 'curiosity' ? 'curiosity' : m.kind === 'anecdote' ? 'anecdote' : 'memory'}, {m.source}</span>}</p>)}
+      </div>
+      <p class="small muted">From family stories and documents – not yet verified in the registers.</p>
+    </>
+  )}
+  {p.summary ? (
+    <div class="note">
+      <p><strong>Research notes:</strong> {p.summary}</p>
+      {p.note && <details class="note-more"><summary>Detailed research notes</summary><p class="small">{p.note}</p></details>}
+    </div>
+  ) : p.note && <p class="note"><strong>Research notes:</strong> {p.note}</p>}
+
+  <h2>Family ties</h2>
+  <div class="medals">
+    {p.father ? <Medal slug={p.father} rel="Father" /> : <div class="medal empty"><span class="monogram" aria-hidden="true">?</span><span class="who"><span class="rel">Father</span><span class="nm muted">{p.fatherUnknown ? 'not recorded (born out of wedlock)' : 'not yet known'}</span></span></div>}
+    {p.mother ? <Medal slug={p.mother} rel="Mother" /> : <div class="medal empty"><span class="monogram" aria-hidden="true">?</span><span class="who"><span class="rel">Mother</span><span class="nm muted">not yet known</span></span></div>}
+    {p.spouse && <Medal slug={p.spouse} rel={p.sex === 'M' ? 'Wife' : 'Husband'} />}
+    {(p.children ?? []).map((c) => <Medal slug={c} rel={people[c]?.sex === 'F' ? 'Daughter in the line' : 'Son in the line'} />)}
+    {otherKids.map((o) => <div class="medal"><span class="monogram" aria-hidden="true">{initials(o.name.split(',')[0])}</span><span class="who"><span class="rel">{o.sex === 'F' ? 'Daughter' : 'Son'}</span><span class="nm">{o.name}</span>{o.year && <span class="life">* {o.year}</span>}</span></div>)}
+  </div>
+  <p class="small">
+    {p.family && <a href={href.family(p.family)}>Family of origin →</a>}
+    {p.family && p.ownFamily && <span class="muted"> · </span>}
+    {p.ownFamily && <a href={href.family(p.ownFamily)}>{p.sex === 'F' ? 'Her' : 'His'} own family →</a>}
+  </p>
+
+  {p.side.length > 0 && (
+    <>
+      <h2>Siblings and other relatives</h2>
+      <div class="grid2">
+        {p.side.map((s) => (
+          <div class="card"><h3>{s.name}</h3><p class="small">{fmtDate(s.text)}</p>
+            <p class="small"><a href={`/relationship/?a=${root.slug}&b=${p.slug}~${p.side.indexOf(s)}`}>How are we related? →</a></p>
+            {s.records.length > 0 && <p class="small">Records: {s.records.filter((r) => records[r]).map((r, i) => <>{i > 0 && ' · '}<a href={href.record(r)}>{records[r].date}</a></>)}</p>}
+          </div>
+        ))}
+      </div>
+    </>
+  )}
+
+  <h2>Pedigree</h2>
+  <div class="only-desktop"><Pedigree k={p.k} /></div>
+  <div class="only-mobile"><MobileTree k={p.k} /></div>
+
+  {p.docs.length > 0 && (
+    <>
+      <h2>Family documents and photographs</h2>
+      <div class="docs">{p.docs.map((d) => <figure><a href={`/img/${d.img}.jpg`} target="_blank" rel="noopener"><img src={`/img/${d.img}.jpg`} alt={d.caption} loading="lazy" /></a><figcaption>{d.caption}</figcaption></figure>)}</div>
+    </>
+  )}
+
+  <h2>Register records</h2>
+  {recs.length ? <div class="recs">{recs.map((r) => <Record id={r} showPeople exclude={p.slug} />)}</div>
+    : <p class="muted">We do not yet have a register record of this person – the details come from the records of {she ? 'her' : 'his'} children{p.st === 'fam' ? ' or from the family' : ''}.</p>}
+
+  {config.contact?.email && (
+    <div class="card feedback">
+      <h2>Do you know more about {p.name}?</h2>
+      <p class="small">Memories, photos, documents, or did you find a mistake? Write to {config.contact.name || 'the author of the family tree'} –
+        <a href={`mailto:${config.contact.email}?subject=${encodeURIComponent(`Family tree: ${p.name}`)}&body=${encodeURIComponent(`Person: ${p.name}\nPage: ${pageUrl(href.person(p.slug))}\n\nWhat I would like to add or correct:\n`)}`}>send an e-mail</a>.
+        Feel free to attach photos and scans.</p>
+    </div>
+  )}
+  <Ornament />
+</Base>

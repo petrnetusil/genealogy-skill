@@ -1,0 +1,12 @@
+{
+  "name": "genealogy",
+  "version": "0.1.0",
+  "description": "Family tree from parish registers and archives, ending in a private family website – a step-by-step guide for beginners.",
+  "author": {
+    "name": "Petr Netušil"
+  },
+  "homepage": "https://github.com/petrnetusil/genealogy-skill",
+  "repository": "https://github.com/petrnetusil/genealogy-skill",
+  "license": "MIT",
+  "keywords": ["genealogy", "family tree", "parish registers", "ancestry", "family history", "website"]
+}

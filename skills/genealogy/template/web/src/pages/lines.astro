@@ -1,0 +1,31 @@
+---
+import Base from '../layouts/Base.astro';
+import PersonLink from '../components/PersonLink.astro';
+import { lines, people, href, linesTitle } from '../lib/data.js';
+const list = Object.values(lines).sort((a, b) => a.k - b.k);
+---
+<Base title="Lines">
+  <h1>{linesTitle(list.length)}</h1>
+  <p class="lead">The family tree branches after the eight great-grandparents – the parents of the grandparents. Each line is one of these branches with all its ancestors.</p>
+  {list.length === 0 && <p>The lines appear once the great-grandparents are known.</p>}
+  <h2>Father's side</h2>
+  <div class="grid2">
+    {list.filter((l) => l.k < 12).map((l) => (
+      <a class="card line-card card-link" style={`--c:${l.color}`} href={href.line(l.slug)}>
+        <h3>{l.name}</h3>
+        <p class="small">{l.desc}</p>
+        <p class="small muted">{l.people.length} ancestors · starts with {people[l.root].name}</p>
+      </a>
+    ))}
+  </div>
+  <h2>Mother's side</h2>
+  <div class="grid2">
+    {list.filter((l) => l.k >= 12).map((l) => (
+      <a class="card line-card card-link" style={`--c:${l.color}`} href={href.line(l.slug)}>
+        <h3>{l.name}</h3>
+        <p class="small">{l.desc}</p>
+        <p class="small muted">{l.people.length} ancestors · starts with {people[l.root].name}</p>
+      </a>
+    ))}
+  </div>
+</Base>

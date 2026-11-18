@@ -1,0 +1,25 @@
+{
+  "name": "genealogy-web",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "data": "node scripts/data.mjs",
+    "dev": "astro dev",
+    "build": "astro build && pagefind --site dist",
+    "serve": "astro preview",
+    "preview": "npm run data && npm run build && astro preview --ignore-lock",
+    "deploy": "npm run data -- --deploy && npm run build && npx -y netlify-cli@latest deploy --prod --dir=dist && node scripts/verify.mjs",
+    "deploy-cloudflare": "npm run data -- --deploy && npm run build && node scripts/deploy_cloudflare.mjs",
+    "verify": "node scripts/verify.mjs",
+    "pack": "tar -czf ../genealogy-web.tar.gz --exclude=node_modules --exclude=dist --exclude=.astro .",
+    "deploy-caprover": "npm run data -- --deploy && npm run pack && caprover deploy -t ../genealogy-web.tar.gz"
+  },
+  "dependencies": {
+    "astro": "^7.3.8",
+    "leaflet": "^1.9.4"
+  },
+  "devDependencies": {
+    "pagefind": "^1.5.2"
+  }
+}

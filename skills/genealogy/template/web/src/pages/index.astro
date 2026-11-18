@@ -1,0 +1,94 @@
+---
+import Base from '../layouts/Base.astro';
+import { stats, lines, href, config, linesTitle, earliestYear } from '../lib/data.js';
+import Ornament from '../components/Ornament.astro';
+import fan from '../generated/fan.svg?raw';
+import FamilyMap from '../components/FamilyMap.astro';
+import site from '../data/site.json';
+import { frontmatter as story } from '../generated/story.md';
+const lineList = Object.values(lines).sort((a, b) => a.k - b.k);
+const home = config.home ?? {};
+const cards = config.home_curiosities ?? [];
+---
+<Base title="" wide>
+  <section class="frontis">
+    <p class="kicker">Family chronicle</p>
+    <h1>{config.title || 'Family tree'}</h1>
+    <Ornament />
+    <p class="summary">{stats.ancestors} ancestors in {stats.generations} generations – from {earliestYear} to the present day.{' '}
+      {stats.documented} of them we have seen with our own eyes in the registers.</p>
+    <nav class="views" aria-label="Views of the family tree">
+      <a class="view-btn primary" href="/fan/"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V11M12 11C12 7 9 4 5 4M12 11c0-4 3-7 7-7M12 15c-2-2-5-2-7-1M12 15c2-2 5-2 7-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Ancestor fan</a>
+      <a class="view-btn" href="/ancestors/"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5C6 4 9 4 12 6c3-2 6-2 9-.5V19c-3-1.5-6-1.5-9 .5-3-2-6-2-9-.5Z M12 6v13.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Read as a chronicle</a>
+    </nav>
+  </section>
+
+  {!!(home.heading || home.paragraphs?.length) && (
+    <section class="teaser">
+      <div>
+        {home.heading && <h2>{home.heading}</h2>}
+        {(home.paragraphs ?? []).map((t) => <p>{t}</p>)}
+        {config.hasStory && <a class="btn" href="/stories/">{config.story?.button || `Read: ${story.title}`} →</a>}
+      </div>
+      {home.photo && (
+        <a href={config.hasStory ? '/stories/' : `/img/${home.photo}.jpg`}><img src={`/img/${home.photo}.jpg`} alt={home.photo_caption || ''} /></a>
+      )}
+    </section>
+  )}
+
+  {config.hasStory && !(home.heading || home.paragraphs?.length) && (
+    <section class="teaser">
+      <div>
+        <h2>{story.title}</h2>
+        {story.lead && <p>{story.lead}</p>}
+        <a class="btn" href="/stories/">{config.story?.button || 'Read the story'} →</a>
+      </div>
+    </section>
+  )}
+
+  <div class="stats">
+    <div><strong>{stats.ancestors}</strong>known ancestors</div>
+    <div><strong>{stats.documented}</strong>documented in registers</div>
+    <div><strong>{stats.generations}</strong>generations</div>
+    <div><strong>{stats.records}</strong>register records</div>
+  </div>
+  <p class="center small"><a href="/statistics/">More numbers: lifespans, names, trades, places →</a></p>
+
+  {cards.length > 0 && (
+    <>
+      <h2>Curiosities</h2>
+      <div class="grid2">
+        {cards.map((c) => (
+          <a class="card card-link" href="/curiosities/"><h3>{c.title}</h3><p class="small muted">{c.text}</p></a>
+        ))}
+      </div>
+      <p><a href="/curiosities/">All curiosities →</a></p>
+    </>
+  )}
+
+  {site.places.length > 0 && (
+    <>
+      <h2>Where our ancestors lived</h2>
+      <FamilyMap height="420px" compact />
+      <p><a href="/map/">Full map with names and a filter by line →</a></p>
+    </>
+  )}
+
+  {lineList.length > 0 && (
+    <>
+      <h2>{linesTitle(lineList.length)}</h2>
+      <div class="grid2">
+        {lineList.map((l) => (
+          <a class="card line-card card-link" style={`--c:${l.color}`} href={href.line(l.slug)}>
+            <h3>{l.name}</h3>
+            <p class="small muted">{l.desc}</p>
+          </a>
+        ))}
+      </div>
+    </>
+  )}
+
+  <h2>Family tree</h2>
+  <div class="fan-preview"><a class="cover" href="/fan/" aria-label="Open the ancestor fan full screen"></a><Fragment set:html={fan} /></div>
+  <p><a class="btn" href="/fan/">Open the ancestor fan full screen →</a> <a href="/ancestors/" style="margin-left:1rem">or the list of all ancestors</a></p>
+</Base>

@@ -1,0 +1,75 @@
+---
+import '../styles/global.css';
+import Ornament from '../components/Ornament.astro';
+import { config } from '../lib/data.js';
+import news from '../news.json';
+const version = news.length ? Math.max(...news.map((v) => v.version)) : 0;
+const siteName = config.title || 'Family tree';
+const { title, description = config.description || siteName, wide = false, wider = false, full = false } = Astro.props;
+const path = Astro.url.pathname;
+const groups = [
+  [['/', 'Home'], ...(config.hasStory ? [['/stories/', config.story?.menu || 'Family story']] : []), ['/curiosities/', 'Curiosities'], ['/documents/', 'Documents & photos']],
+  [['/lines/', 'Lines'], ['/map/', 'Map'], ['/fan/', 'Fan'], ['/ancestors/', 'Ancestors'], ['/relationship/', 'Relationship'], ['/records/', 'Records'], ['/open-questions/', 'Open questions']],
+  [['/news/', 'News'], ['/search/', 'Search']],
+];
+const current = (url) => ((url === '/' ? path === '/' : path.startsWith(url)) ? 'page' : undefined);
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="description" content={description} />
+    <title>{title ? `${title} · ${siteName}` : siteName}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:ital,wght@0,400..700;1,400..700&display=swap&subset=latin-ext" />
+    <meta name="theme-color" content="#F7F4EF" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='15.5' fill='%233F2A1E'/><circle cx='16' cy='16' r='13' fill='none' stroke='%23D9A85A' stroke-width='1'/><path d='M16 26V15M16 15C16 10.5 12.6 7 8 7M16 15c0-4.5 3.4-8 8-8M16 20c-2.3-2.3-5.6-2.3-8-1.2M16 20c2.3-2.3 5.6-2.3 8-1.2' fill='none' stroke='%23F1D9A8' stroke-width='2.2' stroke-linecap='round'/></svg>" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/"><svg class="logo" width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="none" stroke="#D9A85A" stroke-width="1.1" opacity="0.85"/><path d="M16 26V15M16 15C16 10.5 12.6 7 8 7M16 15c0-4.5 3.4-8 8-8M16 20c-2.3-2.3-5.6-2.3-8-1.2M16 20c2.3-2.3 5.6-2.3 8-1.2" fill="none" stroke="#F1D9A8" stroke-width="1.9" stroke-linecap="round"/></svg>{siteName}</a>
+      <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+      <nav id="site-nav">
+        {groups.map((g, i) => (
+          <div class={`nav-group nav-group-${i + 1}`}>
+            {g.map(([url, label]) => <a href={url} aria-current={current(url)}>{label}</a>)}
+          </div>
+        ))}
+      </nav>
+    </header>
+    <script>
+      const btn = document.querySelector<HTMLButtonElement>('.menu-btn');
+      btn?.addEventListener('click', () => {
+        const open = document.body.classList.toggle('nav-open');
+        btn.setAttribute('aria-expanded', String(open));
+      });
+    </script>
+    <main class={full ? 'full' : wider ? 'wider' : wide ? 'wide' : ''} data-pagefind-body>
+      <slot />
+    </main>
+    <script>
+      // "Sources: …" lines in stories and curiosities are folded into an expandable "Sources" (readers open it if they want).
+      document.querySelectorAll('main p').forEach((p) => {
+        const html = p.innerHTML;
+        const i = html.search(/(<strong>)?Sources:/);
+        if (i < 0) return;
+        const d = document.createElement('details');
+        d.className = 'sources';
+        const s = document.createElement('summary');
+        s.textContent = 'Sources';
+        const z = document.createElement('p');
+        z.innerHTML = html.slice(i).replace(/^(<strong>)?Sources:(<\/strong>)?\s*/, '');
+        d.append(s, z);
+        const before = html.slice(0, i).trim();
+        if (before) { p.innerHTML = before; p.after(d); } else { p.replaceWith(d); }
+      });
+    </script>
+    {!full && <footer class="site-footer">
+      <Ornament />
+      {config.footer || 'Researched in digitised parish registers and archives'} · private family website · <a href="/news/">version {version}</a>
+    </footer>}
+  </body>
+</html>
